@@ -1,0 +1,2 @@
+DEBUG:root:GET ("/api/favourites/re@gmail.com"), func(get_favourites_estate): [<database_config.Estate object at 0x15530b3a0>]
+DEBUG:root:DELETE ("/api/favourites"), func(delete_favourite): {'_sa_instance_state': <sqlalchemy.orm.state.InstanceState object at 0x15533d2b0>, 'estate_id': 1, 'user_id': 1}

@@ -1,0 +1,2 @@
+DEBUG:root:GET ("/"), func(root): {'message': 'Hello METANIT.COM'}
+DEBUG:root:GET ("/"), func(root): {'message': 'Hello METANIT.COM'}
