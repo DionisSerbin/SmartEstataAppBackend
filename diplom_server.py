@@ -30,6 +30,7 @@ predict_router = InferringRouter()
 estate_router = InferringRouter()
 favourites_router = InferringRouter()
 
+
 def get_db():
     db = SessionLocal()
     try:
@@ -81,14 +82,11 @@ class UserAPI:
     async def create_user(self, data=Body(), db: Session = Depends(get_db)):
         link = "/api/users"
 
-
         user = User(
-            user_name=data["user_name"],
             user_mail=data["user_mail"]
         )
 
-        existed_user = db.query(User).filter(User.user_mail == user.user_mail
-                                             or User.user_login == user.user_login).first()
+        existed_user = db.query(User).filter(User.user_mail == user.user_mail).first()
 
         if existed_user is not None:
             resp_json = {"message": "Пользователь с такой почтой или с номером телефона уже существует"}
@@ -102,32 +100,20 @@ class UserAPI:
 
             return response
 
-        if self.__wrong_validate_request(user):
-            resp_json = {"message": "Неправильно введены данные"}
-
-            response = JSONResponse(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                content=resp_json
-            )
-
-            rest_log.post(link=link, func=self.create_user.__name__, response=resp_json)
-
-            return response
-
         db.add(user)
         db.commit()
         db.refresh(user)
 
         rest_log.post(link=link, func=self.create_user.__name__, response=user.__dict__)
 
-        return user
+        return 1
 
     # изменение пользователя
     @user_router.put("/api/users", response_class=JSONResponse)
     async def edit_user(self, data=Body(), db: Session = Depends(get_db)):
         link = "/api/users"
 
-        user = db.query(User).filter(User.user_id == data["user_id"]).first()
+        user = db.query(User).filter(User.user_mail == data["user_mail"]).first()
 
         if user is None:
             resp_json = {"message": "Пользователь не найден"}
@@ -146,20 +132,8 @@ class UserAPI:
             user_login=data["user_login"]
         )
 
-        if self.__wrong_validate_request(user):
-            resp_json = {"message": "Неправильно введены данные"}
-
-            response = JSONResponse(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                content=resp_json
-            )
-
-            rest_log.put(link=link, func=self.edit_user.__name__, response=resp_json)
-
-            return response
-
         user.user_name = edited_user.user_name
-        user.user_mail = edited_user.user_mail
+        user.user_mail = data["user_mail"]
         user.user_login = edited_user.user_login
 
         db.commit()
@@ -167,7 +141,7 @@ class UserAPI:
 
         rest_log.put(link=link, func=self.edit_user.__name__, response=user.__dict__)
 
-        return user
+        return 1
 
     # удаление пользователя
     @user_router.delete("/api/users/{user_mail}", response_class=JSONResponse)
@@ -230,37 +204,37 @@ class PredictAPI:
         self.MILLION_VALUE = 1_000_000
 
     # предсказание цены
-    @predict_router.get("/api/prediction", response_class=JSONResponse)
+    @predict_router.post("/api/prediction", response_class=JSONResponse)
     async def get_prediction(self, data=Body()):
         link = "/api/prediction"
 
-        predict_model = self.get_predict_model(data)
+        predict_model1, predict_model2 = self.get_predict_model(data)
 
-        if predict_model == None:
+        if predict_model1 == None or predict_model2 == None:
             resp_json = {"message": "Не правильно введен город"}
             response = JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content=resp_json
             )
-            rest_log.get(link=link, func=self.get_prediction.__name__, response=resp_json)
+            rest_log.post(link=link, func=self.get_prediction.__name__, response=resp_json)
             return response
 
-        df = pd.DataFrame(
+        df1 = pd.DataFrame(
             np.array(
                 [
-                    [float(predict_model.latitude)],
-                    [float(predict_model.longitude)],
-                    [int(predict_model.region)],
-                    [int(predict_model.building_type)],
-                    [int(predict_model.level)],
-                    [int(predict_model.levels)],
-                    [int(predict_model.rooms)],
-                    [float(predict_model.area)],
-                    [float(predict_model.kitchen_area)],
-                    [int(predict_model.object_type)],
-                    [int(predict_model.year)],
-                    [int(predict_model.month)],
-                    [int(predict_model.day)]
+                    [float(predict_model1.latitude)],
+                    [float(predict_model1.longitude)],
+                    [int(predict_model1.region)],
+                    [int(predict_model1.building_type)],
+                    [int(predict_model1.level)],
+                    [int(predict_model1.levels)],
+                    [int(predict_model1.rooms)],
+                    [float(predict_model1.area)],
+                    [float(predict_model1.kitchen_area)],
+                    [int(predict_model1.object_type)],
+                    [int(predict_model1.year)],
+                    [int(predict_model1.month)],
+                    [int(predict_model1.day)]
                 ]
             ).transpose(),
             columns=[
@@ -279,15 +253,55 @@ class PredictAPI:
                 "day"
             ]
         )
-        print(predict_model.longitude)
-        print(predict_model.latitude)
-        feature_values = df.values
 
-        cost_predicted = xgb_model.predict(feature_values)
+        df2 = pd.DataFrame(
+            np.array(
+                [
+                    [float(predict_model2.latitude)],
+                    [float(predict_model2.longitude)],
+                    [int(predict_model2.region)],
+                    [int(predict_model2.building_type)],
+                    [int(predict_model2.level)],
+                    [int(predict_model2.levels)],
+                    [int(predict_model2.rooms)],
+                    [float(predict_model2.area)],
+                    [float(predict_model2.kitchen_area)],
+                    [int(predict_model2.object_type)],
+                    [int(predict_model2.year)],
+                    [int(predict_model2.month)],
+                    [int(predict_model2.day)]
+                ]
+            ).transpose(),
+            columns=[
+                "latitude",
+                "longitude",
+                "region",
+                "building_type",
+                "level",
+                "levels",
+                "rooms",
+                "area",
+                "kitchen_area",
+                "object_type",
+                "year",
+                "month",
+                "day"
+            ]
+        )
 
-        response = {"prediction": f"{int(cost_predicted[0] * self.MILLION_VALUE)}"}
+        feature_values1 = df1.values
+        feature_values2 = df2.values
 
-        rest_log.get(link=link, func=self.get_prediction.__name__, response=response)
+        cost_predicted1 = xgb_model.predict(feature_values1)
+        cost_predicted2 = xgb_model.predict(feature_values2)
+
+        if cost_predicted1 > cost_predicted2:
+            cost_predicted1, cost_predicted2 = cost_predicted2, cost_predicted1
+
+        response = {"cost1": f"{int(cost_predicted1[0] * self.MILLION_VALUE)}",
+                    "cost2": f"{int(cost_predicted2[0] * self.MILLION_VALUE)}"}
+
+        rest_log.post(link=link, func=self.get_prediction.__name__, response=response)
 
         return response
 
@@ -306,24 +320,42 @@ class PredictAPI:
         longitude = point.x
         latitude = point.y
 
-        return PredictModel(
-            day=self.get_feature(feature_string="day", data=data),
-            month=self.get_feature(feature_string="month", data=data),
-            year=self.get_feature(feature_string="year", data=data),
-            area=self.get_feature(feature_string="area", data=data),
-            kitchen_area=self.get_feature(feature_string="kitchen_area", data=data),
-            levels=self.get_feature(feature_string="levels", data=data),
-            level=self.get_feature(feature_string="level", data=data),
-            rooms=self.get_feature(feature_string="rooms", data=data),
-            building_type=self.get_feature(feature_string="building_type", data=data),
-            object_type=self.get_feature(feature_string="object_type", data=data),
+        first_model = PredictModel(
+            day=self.mean_day,
+            month=self.mean_month,
+            year=self.mean_year,
+            area=self.get_feature(feature_string="totalAreaFrom", data=data),
+            kitchen_area=self.get_feature(feature_string="kitchenAreaFrom", data=data),
+            levels=self.get_feature(feature_string="levelsFrom", data=data),
+            level=self.get_feature(feature_string="levelFrom", data=data),
+            rooms=self.get_feature(feature_string="numberOfRoomsFrom", data=data),
+            building_type=self.get_feature(feature_string="houseType", data=data),
+            object_type=self.get_feature(feature_string="objectType", data=data),
             region=self.mean_region,
             latitude=latitude,
             longitude=longitude
         )
 
+        second_model = PredictModel(
+            day=self.mean_day,
+            month=self.mean_month,
+            year=self.mean_year,
+            area=self.get_feature(feature_string="totalAreaTo", data=data),
+            kitchen_area=self.get_feature(feature_string="kitchenAreaTo", data=data),
+            levels=self.get_feature(feature_string="levelsTo", data=data),
+            level=self.get_feature(feature_string="levelTo", data=data),
+            rooms=self.get_feature(feature_string="numberOfRoomsTo", data=data),
+            building_type=self.get_feature(feature_string="houseType", data=data),
+            object_type=self.get_feature(feature_string="objectType", data=data),
+            region=self.mean_region,
+            latitude=latitude,
+            longitude=longitude
+        )
+
+        return first_model, second_model
+
     def get_feature(self, feature_string, data):
-        if data[feature_string] == "":
+        if data[feature_string] == '':
             return self.get_mean_value(feature_string)
         else:
             return data[feature_string]
@@ -334,17 +366,21 @@ class PredictAPI:
         elif feature_string == "month":
             return self.mean_month
         elif feature_string == "year":
-            return self.mean_month
-        elif feature_string == "area":
-            return self.mean_month
-        elif feature_string == "kitchen_area":
-            return self.mean_month
-        elif feature_string == "levels":
-            return self.mean_month
-        elif feature_string == "building_type":
-            return self.mean_month
-        elif feature_string == "object_type":
-            return self.mean_month
+            return self.mean_year
+        elif feature_string == "numberOfRoomsFrom" or feature_string == "numberOfRoomsTo":
+            return self.mean_rooms
+        elif feature_string == "totalAreaTo" or feature_string == "totalAreaFrom":
+            return self.mean_area
+        elif feature_string == "kitchenAreaTo" or feature_string == "kitchenAreaFrom":
+            return self.mean_kitchen_area
+        elif feature_string == "levelsFrom" or feature_string == "levelsTo":
+            return self.mean_levels
+        elif feature_string == "levelFrom" or feature_string == "levelTo":
+            return self.mean_level
+        elif feature_string == "houseType":
+            return self.mean_building_type
+        elif feature_string == "objectType":
+            return self.mean_object_type
         return "none"
 
 
@@ -353,6 +389,7 @@ class PredictAPI:
 class EstateAPI:
     def __init__(self):
         self.geo_delta = 0.4
+        self.MILLION_VALUE = 1_000_000
 
     # выбрать всю недвижимость
     @estate_router.get("/api/estate/all", response_model=LimitOffsetPage[EstateIn])
@@ -378,7 +415,7 @@ class EstateAPI:
         return estates
 
     # выбрать недвижимость где
-    @estate_router.get("/api/estate/where", response_model=LimitOffsetPage[EstateIn])
+    @estate_router.post("/api/estate/where", response_model=LimitOffsetPage[EstateIn])
     async def get_estates_where(self, data=Body(), db: Session = Depends(get_db)):
         link = "/api/estates/all/where"
 
@@ -392,7 +429,7 @@ class EstateAPI:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content=resp_json
             )
-            rest_log.get(link=link, func=self.get_estates_where.__name__, response=resp_json)
+            rest_log.post(link=link, func=self.get_estates_where.__name__, response=resp_json)
             return response
 
         if not estate_from_to.items:
@@ -401,19 +438,21 @@ class EstateAPI:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content=resp_json
             )
-            rest_log.get(link=link, func=self.get_estates_where.__name__, response=resp_json)
+            rest_log.post(link=link, func=self.get_estates_where.__name__, response=resp_json)
             return response
 
-        rest_log.get(link=link, func=self.get_estates_where.__name__, response=estate_from_to.__dict__)
+        rest_log.post(link=link, func=self.get_estates_where.__name__, response=estate_from_to.__dict__)
 
         return estate_from_to
 
-    #выбрать недвижимость пользователя
-    @estate_router.get("/api/estate/user/{user_id}", response_model=LimitOffsetPage[EstateIn])
-    async def get_user_estate(self, user_id: int, db: Session = Depends(get_db)):
-        link = f"api/estate/user/{user_id}"
+    # выбрать недвижимость пользователя
+    @estate_router.get("/api/estate/user", response_model=LimitOffsetPage[EstateIn])
+    async def get_user_estate(self, mail: str, db: Session = Depends(get_db)):
+        link = f"api/estate/user/{mail}"
 
-        user_estates = self._paginate_(db.query(Estate).filter(Estate.user_id == user_id))
+        user = db.query(User).filter(User.user_mail == mail).first()
+
+        user_estates = self._paginate_(db.query(Estate).filter(Estate.user_id == user.user_id))
 
         if user_estates is None:
             resp_json = {"message": "Недвижимость не найдена"}
@@ -431,11 +470,10 @@ class EstateAPI:
 
         return user_estates
 
-
     # добавить недвижимость
-    @estate_router.post("/api/estate/user/", response_class=JSONResponse)
+    @estate_router.post("/api/estate/user", response_class=JSONResponse)
     async def create_estate(self, data=Body(), db: Session = Depends(get_db)):
-        link = "/api/estates"
+        link = "/api/estate"
 
         try:
             city = tss.google(data["city"], "ru", "en")
@@ -450,7 +488,7 @@ class EstateAPI:
         longitude = point.x
         latitude = point.y
 
-        user = db.query(User).filter(User.user_mail == data["mail"]).first()
+        user = db.query(User).filter(User.user_mail == data["user_mail"]).first()
 
         if user is None:
             resp_json = {"message": "Пользователь не найден"}
@@ -465,20 +503,21 @@ class EstateAPI:
             return response
 
         estate = Estate(
-            price=float(data["price"]),
+            price=float(data["price"]) / self.MILLION_VALUE,
+            address=data["city"],
             year=data["year"],
             month=data["month"],
             day=data["day"],
             time=datetime.strptime(data["time"], '%H:%M:%S').time(),
             latitude=float(latitude),
             longitude=float(longitude),
-            building_type=data["building_type"],
-            object_type=data["object_type"],
+            building_type=data["houseType"],
+            object_type=data["objectType"],
             levels=data["levels"],
             level=data["level"],
-            rooms=data["rooms"],
-            area=float(data["area"]),
-            kitchen_area=float(data["kitchen_area"]),
+            rooms=data["numberOfRooms"],
+            area=float(data["totalArea"]),
+            kitchen_area=float(data["kitchenArea"]),
             user_id=user.user_id
         )
 
@@ -488,7 +527,7 @@ class EstateAPI:
 
         rest_log.post(link=link, func=self.create_estate.__name__, response=estate.__dict__)
 
-        return estate
+        return 1
 
     def create_condition(self, estate_from_to: EstateFomTo, db_query):
 
@@ -531,11 +570,12 @@ class EstateAPI:
             all_filters.append(Estate.rooms <= estate_from_to.rooms_to)
             # db_query.filter(Estate.rooms <= estate_from_to.rooms_to)
 
-        if estate_from_to.building_type is not None:
+        if estate_from_to.building_type is not None and estate_from_to.building_type != -1:
             all_filters.append(Estate.building_type == estate_from_to.building_type)
             # db_query.filter(Estate.building_type == estate_from_to.building_type)
 
-        if estate_from_to.object_type is not None:
+        if estate_from_to.object_type is not None and (
+                estate_from_to.object_type != -1 and estate_from_to.object_type != -2):
             all_filters.append(Estate.object_type == estate_from_to.object_type)
             # db_query.filter(Estate.object_type == estate_from_to.object_type)
 
@@ -568,33 +608,33 @@ class EstateAPI:
         latitude = point.y
 
         return EstateFomTo(
-            area_from=float(self.get_feature(feature_string="area_from", data=data))
-            if self.get_feature(feature_string="area_from", data=data) is not None else None,
+            area_from=float(self.get_feature(feature_string="totalAreaFrom", data=data))
+            if self.get_feature(feature_string="totalAreaFrom", data=data) is not None else None,
 
-            area_to=float(self.get_feature(feature_string="area_to", data=data))
-            if self.get_feature(feature_string="area_to", data=data) is not None else None,
+            area_to=float(self.get_feature(feature_string="totalAreaTo", data=data))
+            if self.get_feature(feature_string="totalAreaTo", data=data) is not None else None,
 
-            kitchen_area_from=float(self.get_feature(feature_string="kitchen_area_from", data=data))
-            if self.get_feature(feature_string="kitchen_area_from", data=data) is not None else None,
+            kitchen_area_from=float(self.get_feature(feature_string="kitchenAreaFrom", data=data))
+            if self.get_feature(feature_string="kitchenAreaFrom", data=data) is not None else None,
 
-            kitchen_area_to=float(self.get_feature(feature_string="kitchen_area_to", data=data))
-            if self.get_feature(feature_string="kitchen_area_to", data=data) is not None else None,
+            kitchen_area_to=float(self.get_feature(feature_string="kitchenAreaTo", data=data))
+            if self.get_feature(feature_string="kitchenAreaTo", data=data) is not None else None,
 
-            levels_from=self.get_feature(feature_string="levels_from", data=data),
-            levels_to=self.get_feature(feature_string="levels_to", data=data),
-            level_from=self.get_feature(feature_string="level_from", data=data),
-            level_to=self.get_feature(feature_string="level_to", data=data),
-            rooms_from=self.get_feature(feature_string="rooms_from", data=data),
-            rooms_to=self.get_feature(feature_string="rooms_to", data=data),
+            levels_from=self.get_feature(feature_string="levelsFrom", data=data),
+            levels_to=self.get_feature(feature_string="levelsTo", data=data),
+            level_from=self.get_feature(feature_string="levelFrom", data=data),
+            level_to=self.get_feature(feature_string="levelTo", data=data),
+            rooms_from=self.get_feature(feature_string="numberOfRoomsFrom", data=data),
+            rooms_to=self.get_feature(feature_string="numberOfRoomsTo", data=data),
 
-            price_from=float(self.get_feature(feature_string="price_from", data=data))
-            if self.get_feature(feature_string="price_from", data=data) is not None else None,
+            price_from=float(self.get_feature(feature_string="priceFrom", data=data)) / self.MILLION_VALUE
+            if self.get_feature(feature_string="priceFrom", data=data) is not None else None,
 
-            price_to=float(self.get_feature(feature_string="price_to", data=data))
-            if self.get_feature(feature_string="price_to", data=data) is not None else None,
+            price_to=float(self.get_feature(feature_string="priceTo", data=data)) / self.MILLION_VALUE
+            if self.get_feature(feature_string="priceTo", data=data) is not None else None,
 
-            building_type=self.get_feature(feature_string="building_type", data=data),
-            object_type=self.get_feature(feature_string="object_type", data=data),
+            building_type=self.get_feature(feature_string="houseType", data=data),
+            object_type=self.get_feature(feature_string="objectType", data=data),
             latitude=float(latitude),
             longitude=float(longitude)
         )
@@ -614,7 +654,7 @@ class EstateAPI:
                         )
 
 
-#favourites rest
+# favourites rest
 @cbv(favourites_router)
 class FavouritesAPI:
 
@@ -681,11 +721,11 @@ class FavouritesAPI:
         return favourite
 
     # Выбрать из закладок
-    @favourites_router.get("/api/favourites/{user_mail}", response_class=JSONResponse)
-    async def get_favourites_estate(self, user_mail: str, db: Session = Depends(get_db)):
-        link = f"/api/favourites/{user_mail}"
+    @favourites_router.get("/api/favourites", response_class=JSONResponse)
+    async def get_favourites_estate(self, mail: str, db: Session = Depends(get_db)):
+        link = f"/api/favourites/{mail}"
 
-        user_favourite = db.query(User).filter(User.user_mail == user_mail).first()
+        user_favourite = db.query(User).filter(User.user_mail == mail).first()
 
         if user_favourite is None:
             resp_json = {"message": "Пользователь не найден"}

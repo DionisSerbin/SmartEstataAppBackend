@@ -1,2 +1,2 @@
-DEBUG:root:GET ("/api/favourites/re@gmail.com"), func(get_favourites_estate): [<database_config.Estate object at 0x15530b3a0>]
-DEBUG:root:DELETE ("/api/favourites"), func(delete_favourite): {'_sa_instance_state': <sqlalchemy.orm.state.InstanceState object at 0x15533d2b0>, 'estate_id': 1, 'user_id': 1}
+DEBUG:root:GET ("api/estate/user/fcv@m.ru"), func(get_user_estate): {'items': [EstateIn(estate_id=5370659, price=10.0, year=2023, month=3, day=4, time=datetime.time(7, 52, 5), latitude=55.7504, longitude=37.6175, region=None, building_type=3, level=5, levels=10, rooms=3, area=32.0, kitchen_area=12.0, object_type=-1, address='Москва', region_name=None, user_id=9)], 'total': 1, 'limit': 10, 'offset': 0}
+DEBUG:root:GET ("api/estate/user/fcv@m.ru"), func(get_user_estate): {'items': [], 'total': 1, 'limit': 10, 'offset': 10}

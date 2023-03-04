@@ -32,20 +32,10 @@ def test_user(link):
 
 
 def test_predict(link):
-    my_predict = {
-        "day": "12",
-        "month": "5",
-        "year": "2022",
-        "area": "56.5",
-        "kitchen_area": "12",
-        "levels": "20",
-        "level": "12",
-        "rooms": "2",
-        "building_type": "2",
-        "object_type": "1",
-        "city": "Москва"
-    }
-    response = requests.get(link, json=my_predict)
+    my_predict = {'city': 'Москва', 'houseType': 3, 'kitchenAreaFrom': '', 'kitchenAreaTo': '', 'levelFrom': '',
+                  'levelTo': '', 'levelsFrom': '', 'levelsTo': '', 'numberOfRoomsFrom': '', 'numberOfRoomsTo': '',
+                  'objectType': -1, 'totalAreaFrom': '', 'totalAreaTo': ''}
+    response = requests.post(link, json=my_predict)
     my_print(response)
 
 
@@ -107,8 +97,8 @@ def test_favourite(link):
 
 
 if __name__ == '__main__':
-    test_user(link="http://192.168.3.33:8080/api/users")
-    # test_predict(link="http://192.168.3.33:8080/api/prediction")
+    # test_user(link="http://192.168.3.33:8080/api/users")
+    test_predict(link="http://192.168.3.33:8080/api/prediction")
     # test_estates(link="http://192.168.3.33:8080/api/estate")
     # test_favourite(link="http://192.168.3.33:8080/api/favourites")
     # test_user_string()
