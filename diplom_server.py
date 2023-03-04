@@ -688,7 +688,7 @@ class FavouritesAPI:
 
         rest_log.post(link=link, func=self.create_favourite.__name__, response=favourite.__dict__)
 
-        return favourite
+        return 1
 
     # Удалить закладку
     @favourites_router.delete("/api/favourites", response_class=JSONResponse)
