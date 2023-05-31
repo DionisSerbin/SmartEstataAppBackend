@@ -7,9 +7,7 @@ from fastapi_utils.cbv import cbv
 from fastapi_utils.inferring_router import InferringRouter
 from fastapi_pagination import LimitOffsetPage, add_pagination, Page
 from fastapi_pagination.ext.sqlalchemy import paginate
-from geopandas.tools import geocode
-import translators as ts
-import translators.server as tss
+from geopandas.tools import geocode, reverse_geocode
 from database_config import *
 from sqlalchemy.orm import Session
 from sqlalchemy import asc, desc, and_
@@ -307,13 +305,10 @@ class PredictAPI:
 
     def get_predict_model(self, data):
 
+        if ' ' in data['city'] and data['city'][-1] == ' ':
+            data['city'] = data['city'][:-1]
         try:
-            city = tss.google(data["city"], "ru", "en")
-        except:
-            return None
-
-        try:
-            location = geocode(city, provider="nominatim", user_agent='my_request')
+            location = geocode(data['city'], provider="nominatim", user_agent='my_request')
         except:
             return None
         point = location.geometry.iloc[0]
@@ -475,13 +470,11 @@ class EstateAPI:
     async def create_estate(self, data=Body(), db: Session = Depends(get_db)):
         link = "/api/estate"
 
-        try:
-            city = tss.google(data["city"], "ru", "en")
-        except:
-            return None
 
+        if ' ' in data['city'] and data['city'][-1] == ' ':
+            data['city'] = data['city'][:-1]
         try:
-            location = geocode(city, provider="nominatim", user_agent='my_request')
+            location = geocode(data['city'], provider="nominatim", user_agent='my_request')
         except:
             return None
         point = location.geometry.iloc[0]
@@ -570,7 +563,7 @@ class EstateAPI:
             all_filters.append(Estate.rooms <= estate_from_to.rooms_to)
             # db_query.filter(Estate.rooms <= estate_from_to.rooms_to)
 
-        if estate_from_to.building_type is not None and estate_from_to.building_type != -1:
+        if estate_from_to.building_type is not None and estate_from_to.building_type != -1 and estate_from_to.building_type != -2:
             all_filters.append(Estate.building_type == estate_from_to.building_type)
             # db_query.filter(Estate.building_type == estate_from_to.building_type)
 
@@ -594,18 +587,18 @@ class EstateAPI:
         ))
 
     def get_estates_from_to(self, data):
-        try:
-            city = tss.google(data["city"], "ru", "en")
-        except:
-            return None
-
-        try:
-            location = geocode(city, provider="nominatim", user_agent='my_request')
-        except:
-            return None
-        point = location.geometry.iloc[0]
-        longitude = point.x
-        latitude = point.y
+        longitude = None
+        latitude = None
+        if self.get_feature(feature_string="city", data=data) is not None:
+            if ' ' in data['city'] and data['city'][-1] == ' ':
+                data['city'] = data['city'][:-1]
+            try:
+                location = geocode(data['city'], provider="nominatim", user_agent='my_request')
+            except:
+                return None
+            point = location.geometry.iloc[0]
+            longitude = point.x
+            latitude = point.y
 
         return EstateFomTo(
             area_from=float(self.get_feature(feature_string="totalAreaFrom", data=data))
@@ -635,8 +628,8 @@ class EstateAPI:
 
             building_type=self.get_feature(feature_string="houseType", data=data),
             object_type=self.get_feature(feature_string="objectType", data=data),
-            latitude=float(latitude),
-            longitude=float(longitude)
+            latitude=float(latitude) if latitude is not None else None,
+            longitude=float(longitude) if longitude is not None else None
         )
 
     def get_feature(self, feature_string, data):
